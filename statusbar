@@ -1,48 +1,70 @@
 #!/bin/bash
 # Depends:
-# CPU frequency depends on cpupower
-# CPU temperature depends on sensors
-# Music player depends on cmus.
+# pamixer for volume levels.
+# dunst for notifications.
+# Disks are set up for my own encrypted partitions. Change to reflect your own patitions.
+
+# Sets the warning count to 0 on script start
+BATTERYWARNCOUNT=0
 
 while true; do	
-	LOCALTIME=$(date | awk {'print $1 " " $2 " " $3 " " substr($4, 1, length($4)-3)'})
-        DISKTOTAL=$(df -Ph | grep "/dev/mapper/cryptroot" | awk {'print $2'})
-        DISKUSEDP=$(df -Ph | grep "/dev/mapper/cryptroot" | awk {'print $5'})
-	DISKUSED=$(df -Ph | grep "/dev/mapper/cryptroot" | awk {'print $3'})
-	MEM=$(free -h | awk '/^Mem:/ {print $3 "/" $2}')
+   # Get time  
+   LOCALTIME=$(date | awk {'print $1 " " $2 " " $3 " " substr($4, 1, length($4)-3)'})
+   # Get disk usage info for home partition
+   HDISKTOTAL=$(df -Ph | grep "/dev/mapper/cryptvolg-home" | awk {'print $2'})
+   HDISKUSEDP=$(df -Ph | grep "/dev/mapper/cryptvolg-home" | awk {'print $5'})
+	HDISKUSED=$(df -Ph | grep "/dev/mapper/cryptvolg-home" | awk {'print $3'})
+   # Get disk usage info for root partition
+   DISKTOTAL=$(df -Ph | grep "/dev/mapper/cryptvolg-root" | awk {'print $2'})
+   DISKUSEDP=$(df -Ph | grep "/dev/mapper/cryptvolg-root" | awk {'print $5'})
+	DISKUSED=$(df -Ph | grep "/dev/mapper/cryptvolg-root" | awk {'print $3'})
+   # Get memory usage info and swap usage info
+   MEM=$(free -h | awk '/^Mem:/ {print $3 "/" $2}')
 	SWAP=$(free -h | awk '/^Swap:/ {print $3 "/" $2}')
-	CPUTEMP=$(sensors | grep 'Package id 0:' | awk '{print substr($4,2)}')
+   # Get Battery percentage and estimated battery life remaining
 	BATTERY=$(cat /sys/class/power_supply/BAT0/capacity)
-	CPUFREQ=$(cpupower frequency-info | grep "asserted by call" | awk {'print $4'})'Ghz'
 	BATTERYSTAT=$(cat /sys/class/power_supply/BAT0/status)
+   # Get volume level of default stream
+   VOLUMELEVEL=$(pamixer --get-volume)'%'
+   # Get brightness level
+   BRIGHTLEVEL=$(brightnessctl | awk '/Current/ { print $4 }' | tail -c +2 | head -c -3)
 
-# Battery status icon
+# Battery status icon and text printed to statusbar depending on battery state.
+   if [ $BATTERYSTAT = Charging ];
+      then
+	   BATTERYSTATICON="🔌"
+      CHARGETIME=$(acpi -i | awk '/Charging/ {print $5}')
+      xsetroot -name "🏠$HDISKUSED/$HDISKTOTAL:$HDISKUSEDP 💾$DISKUSED/$DISKTOTAL:$DISKUSEDP | 📝$MEM 🔁$SWAP | 🔆$BRIGHTLEVEL% | 🎧$VOLUMELEVEL | $BATTERY%$BATTERYSTATICON $CHARGETIME | $LOCALTIME"
+      # Resets low battery warning count if it is not reset and the batter is charging 
+      if [ $BATTERYWARNCOUNT -ne 0 ]; 
+         then 
+            BATTERYWARNCOUNT=0
+      fi
+      
+   elif [ $BATTERYSTAT = Discharging ];
+      then
+		BATTERYSTATICON="🔋"     
+      DISCHARGETIME=$(acpi -i | awk '/Discharging/ {print $5}')
+      xsetroot -name "🏠$HDISKUSED/$HDISKTOTAL:$HDISKUSEDP 💾$DISKUSED/$DISKTOTAL:$DISKUSEDP | 📝$MEM 🔁$SWAP | 🔆$BRIGHTLEVEL% | 🎧$VOLUMELEVEL | $BATTERY%$BATTERYSTATICON $DISCHARGETIME | $LOCALTIME"
+      # Checks if the battery is 15% or less while discharging 
+      if [ $BATTERY -le 15 ] && [ $BATTERYWARNCOUNT -lt 4 ];
+         then
+         notify-send -i /home/adam/.local/bin/motivationalChan/nekoMaidChibi.png "LOW BATTERY!" "Please charge me, sir! I really need energy!"
+         BATTERYWARNCOUNT=$((BATTERYWARNCOUNT+1))
+      # Checks if the battery is 10% or less while discharging and warns of eminent sleep within 20 seconds.
+      elif [ $BATTERY -le 10 ] && [ $BATTERYWARNCOUNT -ge 4 ];
+         then
+         notify-send -i /home/adam/.local/bin/motivationalChan/nekoMaidChibi.png "BATTERY FINAL WARNING!" "Battery reached critical state, sir! Entering sleep mode in 40 seconds" 
+         sleep 20s
+         BATTERYWARNCOUNT=0
+         systemctl hybrid-sleep
+      fi
 
-        if [ $BATTERYSTAT = Charging ];
-        then
-	        BATTERYSTATICON="▲"
-        
-        elif [ $BATTERYSTAT = Discharging ];
-        then
-		BATTERYSTATICON="▼"     
-        
-        elif [ $BATTERYSTAT = Full ];
-        then
-        	BATTERYSTATICON="▇"
-        fi
-
-# Music Player
-
-	MRUN=$(ps -A | grep cmus | awk '{print $4}')
-	if [ "$MRUN" = "cmus" ];
-	then
-		TITLE=$(cmus-remote -Q | grep title | cut -d ' ' -f 3-)
-		ARTIST=$(cmus-remote -Q | grep -e '[^m]artist' | cut -d ' ' -f 3-)' -'
-		xsetroot -name "$ARTIST $TITLE | $DISKUSED/$DISKTOTAL $DISKUSEDP | $MEM $SWAP | $CPUFREQ $CPUTEMP | $LOCALTIME  [ $BATTERY% $BATTERYSTATICON ]"
-
-	else
-		xsetroot -name "$DISKUSED/$DISKTOTAL $DISKUSEDP | $MEM $SWAP | $CPUFREQ $CPUTEMP | $LOCALTIME  [ $BATTERY% $BATTERYSTATICON ]"
-        fi
-
-	sleep 8s
+   elif [ $BATTERYSTAT = Full ];
+      then
+      BATTERYSTATICON="🔌"
+      xsetroot -name "🏠$HDISKUSED/$HDISKTOTAL:$HDISKUSEDP 💾$DISKUSED/$DISKTOTAL:$DISKUSEDP | 📝$MEM 🔁$SWAP | 🔆$BRIGHTLEVEL% | 🎧$VOLUMELEVEL | $BATTERY%$BATTERYSTATICON | $LOCALTIME"
+   fi
+	
+	sleep 12s
 done & 
