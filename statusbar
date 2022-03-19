@@ -13,17 +13,17 @@ while true; do
    # Get disk usage info for home partition
    HDISKTOTAL=$(df -Ph | grep "/dev/mapper/cryptvolg-home" | awk {'print $2'})
    HDISKUSEDP=$(df -Ph | grep "/dev/mapper/cryptvolg-home" | awk {'print $5'})
-	HDISKUSED=$(df -Ph | grep "/dev/mapper/cryptvolg-home" | awk {'print $3'})
+   HDISKUSED=$(df -Ph | grep "/dev/mapper/cryptvolg-home" | awk {'print $3'})
    # Get disk usage info for root partition
    DISKTOTAL=$(df -Ph | grep "/dev/mapper/cryptvolg-root" | awk {'print $2'})
    DISKUSEDP=$(df -Ph | grep "/dev/mapper/cryptvolg-root" | awk {'print $5'})
-	DISKUSED=$(df -Ph | grep "/dev/mapper/cryptvolg-root" | awk {'print $3'})
+   DISKUSED=$(df -Ph | grep "/dev/mapper/cryptvolg-root" | awk {'print $3'})
    # Get memory usage info and swap usage info
    MEM=$(free -h | awk '/^Mem:/ {print $3 "/" $2}')
-	SWAP=$(free -h | awk '/^Swap:/ {print $3 "/" $2}')
+   SWAP=$(free -h | awk '/^Swap:/ {print $3 "/" $2}')
    # Get Battery percentage and estimated battery life remaining
-	BATTERY=$(cat /sys/class/power_supply/BAT0/capacity)
-	BATTERYSTAT=$(cat /sys/class/power_supply/BAT0/status)
+   BATTERY=$(cat /sys/class/power_supply/BAT0/capacity)
+   BATTERYSTAT=$(cat /sys/class/power_supply/BAT0/status)
    # Get volume level of default stream
    VOLUMELEVEL=$(pamixer --get-volume)'%'
    # Get brightness level
@@ -31,19 +31,19 @@ while true; do
 
 # Battery status icon and text printed to statusbar depending on battery state.
    if [ $BATTERYSTAT = Charging ];
-      then
+   then
 	   BATTERYSTATICON="🔌"
-      CHARGETIME=$(acpi -i | awk '/Charging/ {print $5}')
-      xsetroot -name "🏠$HDISKUSED/$HDISKTOTAL:$HDISKUSEDP 💾$DISKUSED/$DISKTOTAL:$DISKUSEDP | 📝$MEM 🔁$SWAP | 🔆$BRIGHTLEVEL% | 🎧$VOLUMELEVEL | $BATTERY%$BATTERYSTATICON $CHARGETIME | $LOCALTIME"
+	   CHARGETIME=$(acpi -i | awk '/Charging/ {print $5}')
+	   xsetroot -name "🏠$HDISKUSED/$HDISKTOTAL:$HDISKUSEDP 💾$DISKUSED/$DISKTOTAL:$DISKUSEDP | 📝$MEM 🔁$SWAP | 🔆$BRIGHTLEVEL% | 🎧$VOLUMELEVEL | $BATTERY%$BATTERYSTATICON $CHARGETIME | $LOCALTIME"
       # Resets low battery warning count if it is not reset and the batter is charging 
       if [ $BATTERYWARNCOUNT -ne 0 ]; 
-         then 
+      then 
             BATTERYWARNCOUNT=0
       fi
       
    elif [ $BATTERYSTAT = Discharging ];
       then
-		BATTERYSTATICON="🔋"     
+      BATTERYSTATICON="🔋"     
       DISCHARGETIME=$(acpi -i | awk '/Discharging/ {print $5}')
       xsetroot -name "🏠$HDISKUSED/$HDISKTOTAL:$HDISKUSEDP 💾$DISKUSED/$DISKTOTAL:$DISKUSEDP | 📝$MEM 🔁$SWAP | 🔆$BRIGHTLEVEL% | 🎧$VOLUMELEVEL | $BATTERY%$BATTERYSTATICON $DISCHARGETIME | $LOCALTIME"
       # Checks if the battery is 15% or less while discharging 
